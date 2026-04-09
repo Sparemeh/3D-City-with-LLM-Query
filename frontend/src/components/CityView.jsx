@@ -74,13 +74,13 @@ export default function CityView({ buildings, highlightedIds, clickedId, onBuild
 
     // Ground
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(2000, 2000),
+      new THREE.PlaneGeometry(4000, 4000),
       new THREE.MeshLambertMaterial({ color: 0x111a11 })
     )
     ground.rotation.x = -Math.PI / 2
     ground.receiveShadow = true
     scene.add(ground)
-    scene.add(new THREE.GridHelper(1000, 50, 0x334433, 0x1a2a1a))
+    scene.add(new THREE.GridHelper(2000, 80, 0x334433, 0x1a2a1a))
 
     const animate = () => {
       animFrameRef.current = requestAnimationFrame(animate)
