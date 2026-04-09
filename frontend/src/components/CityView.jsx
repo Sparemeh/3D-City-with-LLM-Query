@@ -2,14 +2,11 @@ import { useEffect, useRef, useCallback } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
-// Reference point: center of Calgary bbox
-const LAT_REF = 51.045
-const LON_REF = -114.0715
 const SCALE = 111320 // meters per degree latitude
 
-function latLonToXZ(lat, lon) {
-  const x = (lon - LON_REF) * SCALE * Math.cos(LAT_REF * Math.PI / 180)
-  const z = -(lat - LAT_REF) * SCALE
+function latLonToXZ(lat, lon, latRef, lonRef) {
+  const x = (lon - lonRef) * SCALE * Math.cos(latRef * Math.PI / 180)
+  const z = -(lat - latRef) * SCALE
   return { x, z }
 }
 
@@ -23,7 +20,7 @@ function getBuildingColor(buildingType) {
   return 0x556677
 }
 
-export default function CityView({ buildings, highlightedIds, onBuildingClick }) {
+export default function CityView({ buildings, highlightedIds, clickedIds, onBuildingClick, bbox }) {
   const mountRef = useRef(null)
   const sceneRef = useRef(null)
   const cameraRef = useRef(null)
@@ -31,6 +28,18 @@ export default function CityView({ buildings, highlightedIds, onBuildingClick })
   const controlsRef = useRef(null)
   const meshMapRef = useRef({})
   const animFrameRef = useRef(null)
+  // Derived from bbox or buildings; used for coordinate projection
+  const projRef = useRef({ latRef: 51.045, lonRef: -114.0715 })
+
+  // Update projection reference point when bbox changes
+  useEffect(() => {
+    if (bbox) {
+      projRef.current = {
+        latRef: (bbox.south + bbox.north) / 2,
+        lonRef: (bbox.west + bbox.east) / 2,
+      }
+    }
+  }, [bbox])
 
   // Initialize Three.js scene once
   useEffect(() => {
@@ -129,7 +138,8 @@ export default function CityView({ buildings, highlightedIds, onBuildingClick })
       if (!footprint || footprint.length < 3) return
 
       const height = Math.max(properties.height || 10, 1)
-      const points = footprint.map(([lon, lat]) => latLonToXZ(lat, lon))
+      const { latRef, lonRef } = projRef.current
+      const points = footprint.map(([lon, lat]) => latLonToXZ(lat, lon, latRef, lonRef))
 
       const shape = new THREE.Shape()
       shape.moveTo(points[0].x, points[0].z)
@@ -154,12 +164,18 @@ export default function CityView({ buildings, highlightedIds, onBuildingClick })
     })
   }, [buildings])
 
-  // Update highlight colors
+  // Update highlight colors: clicked = yellow (priority), LLM filter = orange
   useEffect(() => {
     if (!sceneRef.current) return
-    const ids = highlightedIds || []
+    const filterIds = new Set(highlightedIds || [])
+    const selectedIds = new Set(clickedIds || [])
     Object.entries(meshMapRef.current).forEach(([id, mesh]) => {
-      if (ids.includes(id)) {
+      if (selectedIds.has(id)) {
+        // Clicked by user → bright yellow
+        mesh.material.color.setHex(0xffff00)
+        mesh.material.emissive.setHex(0x333300)
+      } else if (filterIds.has(id)) {
+        // Matched by LLM filter → orange
         mesh.material.color.setHex(0xffaa00)
         mesh.material.emissive.setHex(0x442200)
       } else {
@@ -167,7 +183,7 @@ export default function CityView({ buildings, highlightedIds, onBuildingClick })
         mesh.material.emissive.setHex(0x000000)
       }
     })
-  }, [highlightedIds])
+  }, [highlightedIds, clickedIds])
 
   const handleClick = useCallback((event) => {
     const renderer = rendererRef.current

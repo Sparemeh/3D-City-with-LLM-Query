@@ -414,3 +414,102 @@ body {
   border-radius: 2px;
   flex-shrink: 0;
 }
+
+/* ── BboxPanel ── */
+.bbox-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.bbox-toggle-arrow {
+  font-size: 0.7rem;
+  color: #8b949e;
+}
+
+.bbox-form {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bbox-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.bbox-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 120px;
+}
+
+.bbox-field label {
+  font-size: 0.7rem;
+  color: #8b949e;
+  text-align: center;
+}
+
+.bbox-field .input {
+  text-align: center;
+  padding: 5px 6px;
+  font-size: 0.8rem;
+  width: 100%;
+}
+
+.bbox-field-top {
+  /* north/south centered */
+}
+
+.bbox-row-mid {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  justify-content: center;
+}
+
+.bbox-row-mid .bbox-field {
+  width: 100px;
+}
+
+.bbox-compass {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.bbox-size-info {
+  font-size: 0.75rem;
+  color: #79c0ff;
+  text-align: center;
+}
+
+.bbox-size-limit {
+  color: #8b949e;
+}
+
+.bbox-error {
+  font-size: 0.78rem;
+  color: #f85149;
+  background: #3d1f1f;
+  border: 1px solid #f85149;
+  border-radius: 5px;
+  padding: 6px 8px;
+}
+
+.bbox-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}

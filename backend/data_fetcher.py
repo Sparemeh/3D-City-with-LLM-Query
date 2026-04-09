@@ -3,12 +3,21 @@ import json
 import os
 import math
 
-CACHE_FILE = os.path.join(os.path.dirname(__file__), 'buildings_cache.json')
+CACHE_DIR = os.path.dirname(__file__)
 
-# Downtown Calgary bounding box (4-5 city blocks)
-BBOX = (51.042, -114.075, 51.048, -114.068)
-LAT_REF = (BBOX[0] + BBOX[2]) / 2
-LON_REF = (BBOX[1] + BBOX[3]) / 2
+# Default downtown Calgary bounding box (4-5 city blocks)
+DEFAULT_BBOX = (51.042, -114.075, 51.048, -114.068)
+
+# Maximum allowed bounding box spans (prevents huge OSM queries)
+MAX_LAT_SPAN = 0.05   # ~5.5 km
+MAX_LON_SPAN = 0.08   # ~5.5 km at Calgary's latitude
+
+
+def _cache_file(bbox):
+    """Return a cache filename unique to this bbox."""
+    south, west, north, east = bbox
+    tag = f'{south:.5f}_{west:.5f}_{north:.5f}_{east:.5f}'
+    return os.path.join(CACHE_DIR, f'buildings_cache_{tag}.json')
 
 
 def _get_zoning(building_type):
@@ -38,28 +47,37 @@ def _get_value_multiplier(zoning):
     return multipliers.get(zoning, 4000)
 
 
-def _polygon_area(coords):
+def _polygon_area(coords, lat_ref, lon_ref):
     """Shoelace formula for approximate area in square meters."""
     if len(coords) < 3:
         return 100.0
     scale = 111320.0
-    cos_lat = math.cos(math.radians(LAT_REF))
+    cos_lat = math.cos(math.radians(lat_ref))
     n = len(coords)
     area = 0.0
     for i in range(n):
         j = (i + 1) % n
-        xi = (coords[i][0] - LON_REF) * scale * cos_lat
-        yi = (coords[i][1] - LAT_REF) * scale
-        xj = (coords[j][0] - LON_REF) * scale * cos_lat
-        yj = (coords[j][1] - LAT_REF) * scale
+        xi = (coords[i][0] - lon_ref) * scale * cos_lat
+        yi = (coords[i][1] - lat_ref) * scale
+        xj = (coords[j][0] - lon_ref) * scale * cos_lat
+        yj = (coords[j][1] - lat_ref) * scale
         area += xi * yj - xj * yi
     return abs(area) / 2.0
 
 
-def fetch_buildings():
-    """Fetch building data from OSM Overpass API for downtown Calgary."""
+def fetch_buildings(bbox=None):
+    """Fetch building data from OSM Overpass API for the given bounding box.
+
+    bbox is a tuple (south, west, north, east) of floats.
+    Defaults to DEFAULT_BBOX when not provided.
+    """
+    if bbox is None:
+        bbox = DEFAULT_BBOX
+    south, west, north, east = bbox
+    lat_ref = (south + north) / 2
+    lon_ref = (west + east) / 2
+
     overpass_url = 'https://overpass-api.de/api/interpreter'
-    south, west, north, east = BBOX
     query = f"""
 [out:json][timeout:30];
 (
@@ -117,7 +135,7 @@ out skel qt;
         address = f"{housenumber} {street}".strip() if (housenumber or street) else 'N/A'
         building_type = tags.get('building', 'yes')
         zoning = _get_zoning(building_type)
-        area = _polygon_area(footprint)
+        area = _polygon_area(footprint, lat_ref, lon_ref)
         multiplier = _get_value_multiplier(zoning)
         assessed_value = round(height * area * multiplier / 1000, 2)
 
@@ -145,23 +163,35 @@ out skel qt;
     return buildings
 
 
-def get_cached_buildings():
-    """Return buildings from cache if available, otherwise fetch and cache."""
-    if os.path.exists(CACHE_FILE):
+def get_buildings(bbox=None):
+    """Return buildings from cache if available, otherwise fetch and cache.
+
+    bbox is a tuple (south, west, north, east). Uses DEFAULT_BBOX when None.
+    """
+    if bbox is None:
+        bbox = DEFAULT_BBOX
+    cache_file = _cache_file(bbox)
+
+    if os.path.exists(cache_file):
         try:
-            with open(CACHE_FILE, 'r') as f:
+            with open(cache_file, 'r') as f:
                 data = json.load(f)
             if data:
                 return data
         except (json.JSONDecodeError, IOError):
             pass
 
-    buildings = fetch_buildings()
+    buildings = fetch_buildings(bbox)
 
     try:
-        with open(CACHE_FILE, 'w') as f:
+        with open(cache_file, 'w') as f:
             json.dump(buildings, f)
     except IOError:
         pass
 
     return buildings
+
+
+# Keep old name as an alias so any existing callers still work
+def get_cached_buildings():
+    return get_buildings()
