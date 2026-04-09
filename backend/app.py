@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from models import db, User, Project
-from data_fetcher import get_buildings as _get_buildings, DEFAULT_BBOX, MAX_LAT_SPAN, MAX_LON_SPAN
+from data_fetcher import get_cached_buildings
 from llm_service import parse_query
 import json
 import os
@@ -16,54 +16,14 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
 
-# In-memory cache keyed by bbox tuple so repeated requests for the same
-# bbox don't re-read the cache file on every request.
-_memory_cache = {}
+_buildings_cache = None
 
 
-def _parse_bbox_params():
-    """Parse and validate optional bbox query params.
-
-    Returns a validated (south, west, north, east) tuple, or DEFAULT_BBOX,
-    or raises ValueError with a descriptive message.
-    """
-    south = request.args.get('south')
-    west = request.args.get('west')
-    north = request.args.get('north')
-    east = request.args.get('east')
-
-    if not any([south, west, north, east]):
-        return DEFAULT_BBOX
-
-    try:
-        south, west, north, east = float(south), float(west), float(north), float(east)
-    except (TypeError, ValueError):
-        raise ValueError('bbox parameters must be numeric (south, west, north, east)')
-
-    if not (-90 <= south < north <= 90):
-        raise ValueError('south must be < north and both within [-90, 90]')
-    if not (-180 <= west < east <= 180):
-        raise ValueError('west must be < east and both within [-180, 180]')
-
-    lat_span = north - south
-    lon_span = east - west
-    if lat_span > MAX_LAT_SPAN or lon_span > MAX_LON_SPAN:
-        raise ValueError(
-            f'Bounding box too large. Maximum size is '
-            f'{MAX_LAT_SPAN}° latitude × {MAX_LON_SPAN}° longitude '
-            f'(≈{MAX_LAT_SPAN * 111:.0f} km × {MAX_LON_SPAN * 111 * 0.63:.0f} km). '
-            f'Your request: {lat_span:.4f}° × {lon_span:.4f}°.'
-        )
-
-    return (south, west, north, east)
-
-
-def get_buildings_for_request():
-    """Return buildings for the bbox in the current request."""
-    bbox = _parse_bbox_params()
-    if bbox not in _memory_cache:
-        _memory_cache[bbox] = _get_buildings(bbox)
-    return _memory_cache[bbox]
+def get_buildings():
+    global _buildings_cache
+    if _buildings_cache is None:
+        _buildings_cache = get_cached_buildings()
+    return _buildings_cache
 
 
 def apply_filter(buildings, filter_spec):
@@ -132,10 +92,7 @@ def describe_filter(filter_spec):
 
 @app.route('/api/buildings', methods=['GET'])
 def get_buildings_route():
-    try:
-        buildings = get_buildings_for_request()
-    except ValueError as exc:
-        return jsonify({'error': str(exc)}), 400
+    buildings = get_buildings()
     return jsonify(buildings)
 
 
@@ -156,12 +113,7 @@ def query_route():
             'description': 'Could not parse query. Try: "buildings over 50 meters" or "commercial buildings"'
         })
 
-    # Use the same bbox the frontend is currently viewing
-    try:
-        buildings = get_buildings_for_request()
-    except ValueError as exc:
-        return jsonify({'error': str(exc)}), 400
-
+    buildings = get_buildings()
     matching_ids = apply_filter(buildings, filter_spec)
     description = describe_filter(filter_spec)
 
@@ -169,16 +121,6 @@ def query_route():
         'filter_spec': filter_spec,
         'matching_ids': matching_ids,
         'description': description
-    })
-
-
-@app.route('/api/bbox/limits', methods=['GET'])
-def bbox_limits():
-    """Return the max bbox size and default bbox for the frontend."""
-    return jsonify({
-        'default': list(DEFAULT_BBOX),
-        'max_lat_span': MAX_LAT_SPAN,
-        'max_lon_span': MAX_LON_SPAN,
     })
 
 
