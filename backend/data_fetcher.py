@@ -5,8 +5,8 @@ import math
 
 CACHE_DIR = os.path.dirname(__file__)
 
-# Default downtown Calgary bounding box (~8-10 city blocks)
-DEFAULT_BBOX = (51.040, -114.077, 51.050, -114.066)
+# Default downtown Calgary bounding box (full downtown core)
+DEFAULT_BBOX = (51.037, -114.090, 51.058, -114.055)
 
 # Maximum allowed bounding box spans (prevents huge OSM queries)
 MAX_LAT_SPAN = 0.05   # ~5.5 km

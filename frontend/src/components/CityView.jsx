@@ -2,9 +2,9 @@ import { useEffect, useRef, useCallback } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
-// Reference point: center of Calgary bbox
-const LAT_REF = 51.045
-const LON_REF = -114.0715
+// Reference point: center of Calgary downtown bbox
+const LAT_REF = 51.0475
+const LON_REF = -114.0725
 const SCALE = 111320 // meters per degree latitude
 
 function latLonToXZ(lat, lon) {
