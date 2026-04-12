@@ -8,7 +8,7 @@ A full-stack web application that visualizes downtown Calgary buildings in 3D, s
 
 1. **3D Building Visualization** — Fetches real building footprints, heights, and zoning data from OpenStreetMap (Overpass API) for downtown Calgary and renders them as extruded 3D shapes using Three.js.
 2. **Building Click Popups** — Click any building to see its name, address, height (m + ft), building type, zoning code, and assessed property value.
-3. **LLM Query Integration** — Type natural language queries like *"highlight buildings over 100 feet"* or *"show commercial buildings"*. Powered by HuggingFace Inference API (Mistral-7B) with a rule-based fallback that works without an API key.
+3. **LLM Query Integration** — Type natural language queries like *"highlight buildings over 100 feet"* or *"show commercial buildings"*. Powered by HuggingFace Inference Providers API (Qwen2.5-7B-Instruct). A HuggingFace API token with Inference Providers access is required.
 4. **Project Persistence** — Log in with a username, save the current filter as a named project, and reload it later. All data is stored in SQLite.
 5. **Color-coded Legend** — Buildings are color-coded by type (commercial, residential, industrial, etc.).
 
@@ -21,7 +21,7 @@ A full-stack web application that visualizes downtown Calgary buildings in 3D, s
 | Backend | Python 3.8+, Flask, SQLAlchemy |
 | Database | SQLite (auto-created on first run) |
 | Data Source | OpenStreetMap Overpass API |
-| LLM | HuggingFace Inference API (Mistral-7B) + rule-based fallback |
+| LLM | HuggingFace Inference Providers API (Qwen2.5-7B-Instruct) |
 | Frontend | React 18, Vite, Three.js |
 
 ---
@@ -66,14 +66,16 @@ Open `http://localhost:5173` in your browser.
 
 ---
 
-## Getting a HuggingFace API Key (Optional)
+## Getting a HuggingFace API Key (Required)
 
-The app includes a rule-based query parser that works without any API key. For better LLM-powered parsing:
+A HuggingFace token is required to use the LLM query feature.
 
 1. Go to [https://huggingface.co](https://huggingface.co) and create a free account.
-2. Navigate to **Profile → Settings → Access Tokens**.
-3. Click **New token**, choose **Read** access, and copy the token (starts with `hf_`).
-4. In the app, click the 🔑 key icon in the Query panel and paste your token.
+2. Navigate to **Profile → Settings → Access Tokens → New token**.
+3. Choose **Fine-grained** token type.
+4. Under **User permissions**, enable **Inference → Make calls to Inference Providers**.
+5. Copy the token (starts with `hf_`).
+6. In the app, click the 🔑 key icon in the Query panel and paste your token.
 
 ---
 

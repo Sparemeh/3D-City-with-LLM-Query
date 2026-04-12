@@ -104,8 +104,14 @@ def query_route():
 
     if not query_text:
         return jsonify({'error': 'query is required'}), 400
+    if not hf_api_key:
+        return jsonify({'error': 'hf_api_key is required'}), 400
 
-    filter_spec = parse_query(query_text, hf_api_key)
+    try:
+        filter_spec = parse_query(query_text, hf_api_key)
+    except RuntimeError as e:
+        return jsonify({'error': str(e)}), 502
+
     if not filter_spec:
         return jsonify({
             'filter_spec': None,
