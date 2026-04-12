@@ -23,7 +23,7 @@ export default function App() {
   useEffect(() => {
     fetchBuildings()
       .then(data => setBuildings(data))
-      .catch(() => setError('Failed to load buildings. Is the backend running on port 5000?'))
+      .catch(() => setError('Failed to load buildings. Check that the backend URL is configured correctly.'))
   }, [])
 
   const handleBuildingClick = useCallback((buildingId, properties) => {
@@ -46,7 +46,7 @@ export default function App() {
       setActiveFilter(result)
       setHighlightedIds(result.matching_ids || [])
     } catch {
-      setError('Query failed. Make sure the backend is running.')
+      setError('Query failed. Check that the backend URL is configured correctly.')
     } finally {
       setIsQueryLoading(false)
     }
